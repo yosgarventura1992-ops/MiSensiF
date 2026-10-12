@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Sensi - Free Fire</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121b2d;
+      --panel2:#18253e;
+      --text:#edf4ff;
+      --muted:#a7b5d1;
+      --accent:#ffb703;
+      --accent2:#fb8500;
+      --border:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      background:linear-gradient(180deg,#070d18,#0e1830);
+      color:var(--text);
+      font-family:Arial, sans-serif;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+    .container{
+      width:100%;
+      max-width:960px;
+      background:rgba(255,255,255,.02);
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow:0 20px 50px rgba(0,0,0,.35);
+      padding:24px;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size:30px;
+      color:var(--accent);
+    }
+    .sub{
+      margin:0 0 22px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+    }
+    .card{
+      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+    }
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    input, select, textarea, button{
+      width:100%;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.02);
+      color:var(--text);
+      font-size:15px;
+      padding:12px 14px;
+      outline:none;
+    }
+    input, select{
+      margin-bottom:14px;
+    }
+    textarea{
+      min-height:180px;
+      resize:vertical;
+      margin-top:6px;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    button{
+      cursor:pointer;
+      border:none;
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      color:#0d1220;
+      font-weight:700;
+      transition:.2s;
+    }
+    button:hover{ transform:translateY(-1px); }
+    .secondary{
+      background:transparent;
+      border:1px solid var(--border);
+      color:var(--text);
+    }
+    .check{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:6px 0 12px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    input[type="checkbox"]{
+      width:18px;
+      height:18px;
+      margin:0;
+      accent-color: var(--accent);
+    }
+    @media (max-width: 760px){
+      .grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Generador de Sensi</h1>
+    <p class="sub">Crea una configuración rápida para Free Fire con modelo, DPI y preset.</p>
+
+    <div class="grid">
+      <div class="card">
+        <label for="model">Modelo exacto</label>
+        <input id="model" type="text" placeholder="Ej: Xiaomi Poco X3">
+
+        <label for="preset">Preset</label>
+        <select id="preset">
+          <option value="high">Alta</option>
+          <option value="medium" selected>Media</option>
+          <option value="low">Baja</option>
+        </select>
+
+        <label for="dpi">DPI</label>
+        <input id="dpi" type="number" placeholder="Ej: 400 (opcional)">
+
+        <div class="check">
+          <input id="noDpi" type="checkbox">
+          <span>Sin DPI</span>
+        </div>
+
+        <div class="row">
+          <button id="generateBtn">Generar</button>
+          <button id="randomBtn" class="secondary">Modelo aleatorio</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label for="output">Valores generados</label>
+        <textarea id="output" readonly></textarea>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="copyBtn">Copiar</button>
+          <button id="copyFastBtn" class="secondary">Copiar línea rápida</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const presets = {
+      high: {
+        label: "Alta",
+        General: 82,
+        "Red Dot": 88,
+        "2x": 74,
+        "4x": 68,
+        Sniper: 60,
+        AWM: 52,
+        "Free Look": 92
+      },
+      medium: {
+        label: "Media",
+        General: 66,
+        "Red Dot": 72,
+        "2x": 58,
+        "4x": 52,
+        Sniper: 46,
+        AWM: 38,
+        "Free Look": 74
+      },
+      low: {
+        label: "Baja",
+        General: 48,
+        "Red Dot": 54,
+        "2x": 42,
+        "4x": 36,
+        Sniper: 30,
+        AWM: 24,
+        "Free Look": 58
+      }
+    };
+
+    const modelInput = document.getElementById("model");
+    const presetInput = document.getElementById("preset");
+    const dpiInput = document.getElementById("dpi");
+    const noDpiInput = document.getElementById("noDpi");
+    const output = document.getElementById("output");
+
+    function clamp(v, min, max) {
+      return Math.min(Math.max(v, min), max);
+    }
+
+    function scaleValues(values, dpi) {
+      const factor = dpi / 800;
+      const scaled = {};
+      for (const key in values) {
+        scaled[key] = clamp(Math.round(values[key] * factor), 1, 100);
+      }
+      return scaled;
+    }
+
+    function generate() {
+      const preset = presets[presetInput.value];
+      const model = modelInput.value.trim() || "Sin modelo";
+      const dpi = Number(dpiInput.value);
+
+      let finalValues = { ...preset };
+      delete finalValues.label;
+
+      if (!noDpiInput.checked && Number.isFinite(dpi) && dpi > 0) {
+        finalValues = scaleValues(finalValues, dpi);
+      }
+
+      const lines = [];
+      lines.push("Modelo: " + model);
+      lines.push("Preset: " + preset.label + ((!noDpiInput.checked && Number.isFinite(dpi) && dpi > 0) ? " | DPI: " + dpi : " | DPI: Sin DPI"));
+      lines.push("---");
+
+      for (const key in finalValues) {
+        lines.push(key + ": " + finalValues[key]);
+      }
+
+      const compact = Object.entries(finalValues)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(" | ");
+
+      lines.push("---");
+      lines.push("Línea rápida:");
+      lines.push(compact);
+
+      output.value = lines.join("\n");
+      output.dataset.compact = compact;
+      output.dataset.model = model;
+    }
+
+    document.getElementById("generateBtn").addEventListener("click", generate);
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        alert("Copiado al portapapeles");
+      } catch {
+        alert("No se pudo copiar. Copia manualmente.");
+      }
+    });
+
+    document.getElementById("copyFastBtn").addEventListener("click", async () => {
+      const text = output.dataset.compact || output.value;
+      try {
+        await navigator.clipboard.writeText(`${output.dataset.model || "Modelo"} | ${text}`);
+        alert("Línea rápida copiada");
+      } catch {
+        alert("No se pudo copiar. Copia manualmente.");
+      }
+    });
+
+    document.getElementById("randomBtn").addEventListener("click", () => {
+      const models = ["Xiaomi Poco X3", "Samsung A52", "Redmi Note 10", "OnePlus Nord", "iPhone 12", "Asus Zenfone", "Mi 11 Lite"];
+      modelInput.value = models[Math.floor(Math.random() * models.length)];
+      generate();
+    });
+
+    generate();
+  </script>
+</body>
+  </html>
